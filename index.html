@@ -221,8 +221,9 @@ display:none;
 <button onclick="show('karier')">Karier</button>
 <button onclick="show('explore')">Explore</button>
 <button onclick="show('profile')">My FYP Space</button>
-<button onclick="loginGoogle()">Login</button>
-<button onclick="logout()">Logout</button>
+<span id="userStatus" style="font-size:12px; opacity:0.7;"></span>
+<button id="loginBtn" onclick="loginGoogle()">Login</button>
+<button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
 </div>
 
 </nav>
@@ -467,19 +468,54 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+function saveAllToCloud(){
+  if(!auth.currentUser) return;
+
+  const data = {
+    riasec: localStorage.getItem("riasec") || "",
+    mbti: localStorage.getItem("mbti") || "",
+    vision: JSON.parse(localStorage.getItem("vision") || "{}"),
+    plan: JSON.parse(localStorage.getItem("plan") || "{}"),
+    refleksi: JSON.parse(localStorage.getItem("refleksi") || "{}")
+  };
+
+  db.collection("users")
+    .doc(auth.currentUser.uid)
+    .set(data, { merge: true })
+    .then(()=> console.log("ALL DATA SAVED TO CLOUD ✅"))
+    .catch(err => console.error(err));
+}
 
 auth.onAuthStateChanged(user => {
+  const status = document.getElementById("userStatus");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
   if(user){
-    console.log("User login:", user.email);
+    console.log("User logged in:", user.uid);
+
+    // UI update
+    status.innerText = "Logged in as " + (user.displayName || "User");
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+
+    // LOAD DATA
+    loadUserDataFromCloud();
+    loadRiasecFromCloud();
     loadProfile();
-    alert("Welcome " + user.displayName + " ✨");
+
   } else {
-    console.log("User logout");
+    console.log("User not logged in");
+
+    status.innerText = "Not logged in";
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
   }
 });
 
 // SAVE RIASEC KE CLOUD
-function saveRiasecToCloud(code){
+localStorage.setItem("riasec", code);
+saveAllToCloud(); 
   if(!auth.currentUser) return;
 
   db.collection("users").doc(auth.currentUser.uid).set({
@@ -510,11 +546,11 @@ function loginGoogle(){
 
   auth.signInWithPopup(provider)
     .then(result => {
-      alert("Login berhasil!");
+      console.log("Login success:", result.user);
     })
     .catch(error => {
-      console.error(error);
-      alert("Login gagal:" + error.message);
+      console.error("Login error:", error);
+      alert("Login gagal: " + error.message);
     });
 }
 
@@ -1090,89 +1126,151 @@ html+=`
 document.getElementById("karierList").innerHTML=html;
 }
 
-// LOAD PROFILE
-function loadProfile(){
+// ====================== LOAD PROFILE ======================
+function loadProfile() {
 
-// 1. LOAD LOCAL DULU (biar langsung muncul)
-let riasec = localStorage.getItem("riasec") || "Belum mengerjakan assessment";
-document.getElementById("riasecProfile").innerText = riasec;
+  // --- 1. LOAD LOCAL DULU (biar langsung muncul) ---
+  let riasec = localStorage.getItem("riasec") || "Belum mengerjakan assessment";
+  document.getElementById("riasecProfile").innerText = riasec;
 
-// 2. KALAU LOGIN → LOAD DARI CLOUD
-if(auth.currentUser){
-  loadRiasecFromCloud();
+  let mbti = localStorage.getItem("mbti") || "";
+  document.getElementById("mbtiSelect").value = mbti;
+  document.getElementById("mbtiResult").innerText = mbti ? "Tipe kamu: " + mbti : "";
+
+  let vision = JSON.parse(localStorage.getItem("vision") || "{}");
+  document.getElementById("vision1").value = vision.v1 || "";
+  document.getElementById("vision2").value = vision.v2 || "";
+  document.getElementById("vision3").value = vision.v3 || "";
+  document.getElementById("vision4").value = vision.v4 || "";
+
+  let plan = JSON.parse(localStorage.getItem("plan") || "{}");
+  document.getElementById("plan1").value = plan.p1 || "";
+  document.getElementById("plan2").value = plan.p2 || "";
+  document.getElementById("plan3").value = plan.p3 || "";
+  document.getElementById("plan4").value = plan.p4 || "";
+
+  let refleksi = JSON.parse(localStorage.getItem("refleksi") || "{}");
+  document.getElementById("ref1").value = refleksi.r1 || "";
+  document.getElementById("ref2").value = refleksi.r2 || "";
+  document.getElementById("ref3").value = refleksi.r3 || "";
+  document.getElementById("ref4").value = refleksi.r4 || "";
+  document.getElementById("ref5").value = refleksi.r5 || "";
+
+  // --- 2. LOAD DARI CLOUD KALAU LOGIN ---
+  if(auth.currentUser){
+    loadUserDataFromCloud();
+  }
 }
 
-let mbti = localStorage.getItem("mbti") || "";
-document.getElementById("mbtiSelect").value = mbti;
-document.getElementById("mbtiResult").innerText = mbti ? "Tipe kamu: " + mbti : "";
+// ====================== LOAD CLOUD ======================
+function loadUserDataFromCloud(){
+  if(!auth.currentUser) return;
 
-let vision = JSON.parse(localStorage.getItem("vision") || "{}");
-document.getElementById("vision1").value = vision.v1 || "";
-document.getElementById("vision2").value = vision.v2 || "";
-document.getElementById("vision3").value = vision.v3 || "";
-document.getElementById("vision4").value = vision.v4 || "";
+  db.collection("users").doc(auth.currentUser.uid).get().then(doc=>{
+    if(doc.exists){
+      const data = doc.data();
 
-let plan = JSON.parse(localStorage.getItem("plan") || "{}");
-document.getElementById("plan1").value = plan.p1 || "";
-document.getElementById("plan2").value = plan.p2 || "";
-document.getElementById("plan3").value = plan.p3 || "";
-document.getElementById("plan4").value = plan.p4 || "";
+      if(data.riasec){
+        localStorage.setItem("riasec", data.riasec);
+        document.getElementById("riasecProfile").innerText = data.riasec;
+      }
 
-let refleksi = JSON.parse(localStorage.getItem("refleksi") || "{}");
-document.getElementById("ref1").value = refleksi.r1 || "";
-document.getElementById("ref2").value = refleksi.r2 || "";
-document.getElementById("ref3").value = refleksi.r3 || "";
-document.getElementById("ref4").value = refleksi.r4 || "";
-document.getElementById("ref5").value = refleksi.r5 || "";
+      if(data.mbti){
+        localStorage.setItem("mbti", data.mbti);
+        document.getElementById("mbtiSelect").value = data.mbti;
+        document.getElementById("mbtiResult").innerText = "Tipe kamu: " + data.mbti;
+      }
+
+      if(data.vision){
+        localStorage.setItem("vision", JSON.stringify(data.vision));
+        document.getElementById("vision1").value = data.vision.v1 || "";
+        document.getElementById("vision2").value = data.vision.v2 || "";
+        document.getElementById("vision3").value = data.vision.v3 || "";
+        document.getElementById("vision4").value = data.vision.v4 || "";
+      }
+
+      if(data.plan){
+        localStorage.setItem("plan", JSON.stringify(data.plan));
+        document.getElementById("plan1").value = data.plan.p1 || "";
+        document.getElementById("plan2").value = data.plan.p2 || "";
+        document.getElementById("plan3").value = data.plan.p3 || "";
+        document.getElementById("plan4").value = data.plan.p4 || "";
+      }
+
+      if(data.refleksi){
+        localStorage.setItem("refleksi", JSON.stringify(data.refleksi));
+        document.getElementById("ref1").value = data.refleksi.r1 || "";
+        document.getElementById("ref2").value = data.refleksi.r2 || "";
+        document.getElementById("ref3").value = data.refleksi.r3 || "";
+        document.getElementById("ref4").value = data.refleksi.r4 || "";
+        document.getElementById("ref5").value = data.refleksi.r5 || "";
+      }
+    }
+  });
 }
 
-// SAVE MBTI
+// ====================== SAVE FUNCTIONS ======================
 function saveMBTI(){
-let mbti = document.getElementById("mbtiSelect").value;
-localStorage.setItem("mbti", mbti);
-document.getElementById("mbtiResult").innerText = "Tipe kamu: " + mbti;
+  let mbti = document.getElementById("mbtiSelect").value;
+  if(!mbti) return alert("Pilih MBTI dulu ya!");
+
+  localStorage.setItem("mbti", mbti);
+
+  saveAllToCloud();
+
+  document.getElementById("mbtiResult").innerText = "Tipe kamu: " + mbti;
 }
 
-// SAVE VISION
 function saveVision(){
-let data = {
-v1: document.getElementById("vision1").value,
-v2: document.getElementById("vision2").value,
-v3: document.getElementById("vision3").value,
-v4: document.getElementById("vision4").value
-};
-localStorage.setItem("vision", JSON.stringify(data));
-alert("Vision tersimpan!");
+  let data = {
+    v1: document.getElementById("vision1").value,
+    v2: document.getElementById("vision2").value,
+    v3: document.getElementById("vision3").value,
+    v4: document.getElementById("vision4").value
+  };
+
+  localStorage.setItem("vision", JSON.stringify(data));
+
+  saveAllToCloud();
+
+  alert("Vision tersimpan!");
 }
 
 function savePlan(){
-let data = {
-p1: document.getElementById("plan1").value,
-p2: document.getElementById("plan2").value,
-p3: document.getElementById("plan3").value,
-p4: document.getElementById("plan4").value
-};
-localStorage.setItem("plan", JSON.stringify(data));
-alert("Plan tersimpan!");
+  let data = {
+    p1: document.getElementById("plan1").value,
+    p2: document.getElementById("plan2").value,
+    p3: document.getElementById("plan3").value,
+    p4: document.getElementById("plan4").value
+  };
+
+  localStorage.setItem("plan", JSON.stringify(data));
+  
+  saveAllToCloud();
+
+  alert("Plan tersimpan!");
 }
 
-// SAVE REFLEKSI
 function saveRefleksi(){
-let data = {
-r1: document.getElementById("ref1").value,
-r2: document.getElementById("ref2").value,
-r3: document.getElementById("ref3").value,
-r4: document.getElementById("ref4").value,
-r5: document.getElementById("ref5").value
-};
-localStorage.setItem("refleksi", JSON.stringify(data));
-alert("Refleksi tersimpan!");
+  let data = {
+    r1: document.getElementById("ref1").value,
+    r2: document.getElementById("ref2").value,
+    r3: document.getElementById("ref3").value,
+    r4: document.getElementById("ref4").value,
+    r5: document.getElementById("ref5").value
+  };
+
+  localStorage.setItem("refleksi", JSON.stringify(data));
+  
+  saveAllToCloud();
+
+  alert("Refleksi tersimpan!");
 }
 
+// ====================== MENU TOGGLE ======================
 function toggleMenu(){
-document.getElementById("navMenu").classList.toggle("show");
+  document.getElementById("navMenu").classList.toggle("show");
 }
-
 </script>
 
 </body>
