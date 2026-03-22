@@ -468,6 +468,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+auth.getRedirectResult()
+  .then(result => {
+    if(result.user){
+      console.log("Redirect login success:", result.user);
+    }
+  })
+  .catch(error => {
+    console.error("Redirect error:", error);
+  });
+
 function saveAllToCloud(){
   if(!auth.currentUser) return;
 
@@ -494,14 +505,12 @@ auth.onAuthStateChanged(user => {
   if(user){
     console.log("User logged in:", user.uid);
 
-    // UI update
     status.innerText = "Logged in as " + (user.displayName || "User");
     loginBtn.style.display = "none";
     logoutBtn.style.display = "inline-block";
 
-    // LOAD DATA
+    saveAllToCloud();
     loadUserDataFromCloud();
-    loadRiasecFromCloud();
     loadProfile();
 
   } else {
@@ -512,16 +521,6 @@ auth.onAuthStateChanged(user => {
     logoutBtn.style.display = "none";
   }
 });
-
-// SAVE RIASEC KE CLOUD
-localStorage.setItem("riasec", code);
-saveAllToCloud(); 
-  if(!auth.currentUser) return;
-
-  db.collection("users").doc(auth.currentUser.uid).set({
-    riasec: code
-  }, { merge: true });
-}
 
 // LOAD RIASEC DARI CLOUD
 function loadRiasecFromCloud(){
@@ -544,16 +543,19 @@ function loadRiasecFromCloud(){
 function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
 
-  auth.signInWithPopup(provider)
-    .then(result => {
-      console.log("Login success:", result.user);
-    })
-    .catch(error => {
-      console.error("Login error:", error);
-      alert("Login gagal: " + error.message);
-    });
+  if(/Mobi|Android/i.test(navigator.userAgent)){
+    auth.signInWithRedirect(provider);
+  } else {
+    auth.signInWithPopup(provider)
+      .then(result => {
+        console.log("Login success:", result.user);
+      })
+      .catch(error => {
+        console.error("Login error:", error);
+        alert("Login gagal: " + error.message);
+      });
+  }
 }
-
 // LOGOUT
 function logout(){
   auth.signOut()
@@ -758,8 +760,10 @@ let top3 = sorted.slice(0,3).map(x=>x[0]);
 let code = top3.join("-");
 
 // SIMPAN
-localStorage.setItem("riasec",code);
-saveRiasecToCloud(code);
+localStorage.setItem("riasec", code);
+saveAllToCloud();
+  
+}
 
 // AMBIL DATA TIPE
 let t1 = tipeData[top3[0]];
