@@ -513,16 +513,19 @@ auth.onAuthStateChanged(user => {
   }
 });
 
-// SAVE RIASEC KE CLOUD
-localStorage.setItem("riasec", code);
-saveAllToCloud(); 
+// FIXED: saveRiasecToCloud function properly defined
+function saveRiasecToCloud(code){
   if(!auth.currentUser) return;
 
+  localStorage.setItem("riasec", code);
+  
   db.collection("users").doc(auth.currentUser.uid).set({
     riasec: code
-  }, { merge: true });
+  }, { merge: true })
+  .then(() => console.log("RIASEC saved to cloud ✅"))
+  .catch(err => console.error("Error saving RIASEC:", err));
 }
-
+  
 // LOAD RIASEC DARI CLOUD
 function loadRiasecFromCloud(){
   if(!auth.currentUser) return;
@@ -539,29 +542,54 @@ function loadRiasecFromCloud(){
       }
     });
 }
-
-// LOGIN GOOGLE
+  
+// LOGIN GOOGLE - FIXED: Mobile & Desktop support
 function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
-
-  auth.signInWithPopup(provider)
-    .then(result => {
-      console.log("Login success:", result.user);
-    })
-    .catch(error => {
-      console.error("Login error:", error);
-      alert("Login gagal: " + error.message);
-    });
+  
+  // For mobile, use redirect instead of popup
+  if(window.matchMedia("(max-width: 768px)").matches){
+    auth.signInWithRedirect(provider)
+      .catch(error => {
+        console.error("Login error:", error);
+        alert("Login gagal: " + error.message);
+      });
+  } else {
+    auth.signInWithPopup(provider)
+      .then(result => {
+        console.log("Login success:", result.user);
+        alert("Login berhasil! 🎉");
+      })
+      .catch(error => {
+        console.error("Login error:", error);
+        alert("Login gagal: " + error.message);
+      });
+  }
 }
 
-// LOGOUT
+// Handle redirect result on page load
+auth.getRedirectResult()
+  .then(result => {
+    if(result.user){
+      console.log("User logged in via redirect:", result.user);
+      alert("Login berhasil! 🎉");
+    }
+  })
+  .catch(error => {
+    console.error("Redirect error:", error);
+  });
+
+// LOGOUT - FIXED: Clear localStorage & reload
 function logout(){
   auth.signOut()
     .then(() => {
+      localStorage.clear();
       alert("Logout berhasil!");
+      location.reload();
     })
     .catch(error => {
-      console.error(error);
+      console.error("Logout error:", error);
+      alert("Logout gagal: " + error.message);
     });
 }
 </script>
@@ -1267,9 +1295,18 @@ function saveRefleksi(){
   alert("Refleksi tersimpan!");
 }
 
-// ====================== MENU TOGGLE ======================
+// ====================== MENU TOGGLE - FIXED ======================
 function toggleMenu(){
   document.getElementById("navMenu").classList.toggle("show");
+}
+
+// Auto-close menu when clicking nav items
+function show(page){
+  ["home","test","tipe","jurusan","karier","explore","profile"].forEach(p=>{
+    document.getElementById(p).classList.add("hidden");
+  });
+  document.getElementById(page).classList.remove("hidden");
+  document.getElementById("navMenu").classList.remove("show"); // CLOSE MENU after click
 }
 </script>
 
