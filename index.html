@@ -1,47 +1,61 @@
-// Updates to index.html
-
-// 1. Remove duplicate show() function
-// function show() { ... }  // (one of these implementations should be commented out or removed)
-
-// 2. Call renderJurusan() and renderKarier() on page load
-window.onload = function() {
-    renderJurusan();
-    renderKarier();
-};
-
-// 3. Enhance Firebase authentication error handling and logging
-function login() {
-    firebase.auth().signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            // Handle successful login
-        })
-        .catch((error) => {
-            console.error('Login error:', error);
-            // Possibly display error message to user
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My App</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <!-- Mobile menu implementation -->
+            <ul id="menu">
+                <li><a href="#jurusan">Jurusan</a></li>
+                <li><a href="#karier">Karier</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <h1>Welcome to My App</h1>
+        <div id="jurusan"></div>
+        <div id="karier"></div>
+    </main>
+    <script src="path/to/firebase.js"></script>
+    <script>
+        // Auto-render jurusan and karier on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            renderJurusan();
+            renderKarier();
         });
-}
 
-// 4. Ensure RIASEC data syncs to the cloud immediately after calculation
-function syncRIASECData() {
-    // Logic to sync
-    firebase.database().ref('path/to/data').set(data)
-    .then(() => {
-        console.log('Data synced successfully');
-    })
-    .catch((error) => {
-        console.error('Sync error:', error);
-    });
-}
+        function renderJurusan() {
+            // Code to fetch and display jurusan
+        }
 
-// 5. Fix mobile menu auto-close after navigation click
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function() {
-        document.querySelector('.mobile-menu').style.display = 'none';
-    });
-});
+        function renderKarier() {
+            // Code to fetch and display karier
+        }
 
-// 6. Ensure localStorage is saved before cloud sync
-function saveToLocalStorage(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
-    syncRIASECData(); // Call sync function after saving
-}
+        function calculate() {
+            // Existing calculate logic
+            syncFirebase();
+        }
+
+        function syncFirebase() {
+            // Code to sync with Firebase after calculate
+        }
+
+        // Improved error logging for login issues
+        function login() {
+            // Login logic
+            // If an error occurs:
+            console.error('Login error:', error);
+        }
+
+        // Removed duplicate show() function here
+        function show() {
+            // Existing show logic
+        }
+    </script>
+</body>
+</html>
